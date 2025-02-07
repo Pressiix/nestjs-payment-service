@@ -1,0 +1,178 @@
+{
+  "family": "${APP_NAME}",
+  "executionRoleArn": "${ECS_TASK_EXECUTION_ROLE}",
+  "taskRoleArn": "${ECS_TASK_ROLE}",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "networkMode": "awsvpc",
+  "runtimePlatform": {
+    "operatingSystemFamily": "LINUX",
+    "cpuArchitecture": "X86_64"
+  },
+  "containerDefinitions": [
+    {
+      "name": "<APP_NAME>",
+      "image": "<IMAGE_NAME>",
+      "essential": true,
+      "readonlyRootFilesystem": false,
+      "interactive": true,
+      "pseudoTerminal": true,
+      "linuxParameters": {
+        "initProcessEnabled": true
+      },
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-create-group": "true",
+          "awslogs-group": "${LOG_GROUP_NAME}",
+          "awslogs-region": "${AWS_DEFAULT_REGION}",
+          "awslogs-stream-prefix": "${LOG_PREFIX_NAME}"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 60,
+        "retries": 10,
+        "startPeriod": 10
+      },
+      "environment": [
+        {
+          "name": "NO_COLOR",
+          "value": "true"
+        },
+        {
+          "name": "DB_HOST",
+          "value": "${DB_HOST}"
+        },
+        {
+          "name": "DB_PORT",
+          "value": "${DB_PORT}"
+        },
+        {
+          "name": "DB_USERNAME",
+          "value": "${DB_USERNAME}"
+        },
+        {
+          "name": "DB_NAME",
+          "value": "${DB_NAME}"
+        },
+        {
+          "name": "DB_SCHEMA",
+          "value": "${DB_SCHEMA}"
+        },
+        {
+          "name": "REDIS_STORE_HOST",
+          "value": "${REDIS_STORE_HOST}"
+        },
+        {
+          "name": "REDIS_STORE_PORT",
+          "value": "${REDIS_STORE_PORT}"
+        },
+        {
+          "name": "REDIS_CLUSTER",
+          "value": "${REDIS_CLUSTER}"
+        },
+        {
+          "name": "HTTP_MAX_REDIRECTS",
+          "value": "${HTTP_MAX_REDIRECTS}"
+        },
+        {
+          "name": "HTTP_TIMEOUT",
+          "value": "${HTTP_TIMEOUT}"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "${AWS_REGION}"
+        },
+        {
+          "name": "AWS_SQS_PAYMENT_QUEUE",
+          "value": "${AWS_SQS_PAYMENT_QUEUE}"
+        },
+        {
+          "name": "OMISE_RETURN_URI",
+          "value": "${OMISE_RETURN_URI}"
+        },
+        {
+          "name": "OMISE_VERSION",
+          "value": "${OMISE_VERSION}"
+        },
+        {
+          "name": "CMS_BASE_URL",
+          "value": "${CMS_BASE_URL}"
+        },
+        {
+          "name": "NOTIFICATION_SERVICE_URL",
+          "value": "${NOTIFICATION_SERVICE_URL}"
+        },
+        {
+          "name": "NOTIFICATION_PRE_START_MINUTES",
+          "value": "${NOTIFICATION_PRE_START_MINUTES}"
+        },
+        {
+          "name": "NOTIFICATION_DEEPLINK_URL",
+          "value": "${NOTIFICATION_DEEPLINK_URL}"
+        },
+        {
+          "name": "NOTIFICATION_FALLBACK_URL",
+          "value": "${NOTIFICATION_FALLBACK_URL}"
+        },
+        {
+          "name": "NOTIFICATION_PAYMENT_ICON",
+          "value": "${NOTIFICATION_PAYMENT_ICON}"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DB_PASS",
+          "valueFrom": "${SECRET_MANAGER_ARN}:DB_PASS::"
+        },
+        {
+          "name": "X_API_KEY",
+          "valueFrom": "${SECRET_MANAGER_ARN}:X_API_KEY::"
+        },
+        {
+          "name": "OMISE_SECRET_KEY",
+          "valueFrom": "${SECRET_MANAGER_ARN}:OMISE_SECRET_KEY::"
+        },
+        {
+          "name": "OMISE_PUBLIC_KEY",
+          "valueFrom": "${SECRET_MANAGER_ARN}:OMISE_PUBLIC_KEY::"
+        },
+        {
+          "name": "DIRECTUS_ADMIN_TOKEN",
+          "valueFrom": "${DIRECTUS_ADMIN_TOKEN_SSM_ARN}"
+        },
+        {
+          "name": "NOTIFICATION_SERVICE_API_KEY",
+          "valueFrom": "${NOTIFICATION_SERVICE_API_KEY_SSM_ARN}"
+        }
+      ]
+    }
+  ],
+  "tags": [
+    {
+      "key": "ManagedBy",
+      "value": "CodeDeploy"
+    },
+    {
+      "key": "Environment",
+      "value": "${STAGE}"
+    },
+    {
+      "key": "ApplicationName",
+      "value": "${APPLICATION_NAME}"
+    }
+  ]
+}

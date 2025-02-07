@@ -1,0 +1,83 @@
+version: '3'
+
+volumes:
+  payment_rds_data:
+
+services:
+  rds:
+    restart: always
+    image: postgres:16-alpine # matched AWS's version.
+    container_name: rds
+    ports:
+      - 54323:5432
+    volumes:
+      - ./init_db.sh:/docker-entrypoint-initdb.d/init_db.sh
+      - payment_rds_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_USER: core
+      POSTGRES_PASSWORD: password
+      APP_DB_NAMES: '$DB_NAME'
+      APP_DB_USER: $DB_USERNAME
+      APP_DB_PASS: $DB_PASS
+      APP_DB_SCHEMAS: $DB_SCHEMA
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.0-alpine # matched AWS's version.
+    container_name: redis
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  payment:
+    depends_on:
+      redis:
+        condition: service_healthy
+      rds:
+        condition: service_healthy
+    restart: always
+    build:
+      context: ./
+      dockerfile: Dockerfile.dev
+    container_name: payment
+    ports:
+      - 3000:3000
+    volumes:
+      - ./dist:/usr/src/app/dist
+      - ./node_modules:/usr/src/app/node_modules
+    command: node dist/main.js
+    environment:
+      # RDS
+      DB_HOST: $DB_HOST
+      DB_PORT: $DB_PORT
+      DB_USERNAME: $DB_USERNAME
+      DB_PASS: $DB_PASS
+      DB_NAME: $DB_NAME
+      DB_SCHEMA: $DB_SCHEMA
+      # REDIS
+      REDIS_STORE_HOST: $REDIS_STORE_HOST
+      REDIS_STORE_PORT: $REDIS_STORE_PORT
+      REDIS_CLUSTER: $REDIS_CLUSTER
+      # APPLICATION
+      HTTP_MAX_REDIRECTS: $HTTP_MAX_REDIRECTS
+      HTTP_TIMEOUT: $HTTP_TIMEOUT
+
+  localstack:
+    image: localstack/localstack:3
+    environment:
+      - SERVICES=sqs,s3
+      - AWS_DEFAULT_REGION=eu-central-1
+      - EDGE_PORT=4566
+    ports:
+      - '4566-4597:4566-4597'
+    volumes:
+      - '${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack'
+      - '/var/run/docker.sock:/var/run/docker.sock'
